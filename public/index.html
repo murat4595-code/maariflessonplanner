@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maarif Lesson Planner (Türkiye Yüzyılı)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- HTML2PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- DOCX -->
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .animate-fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background-color: white; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- ICONS (SVG Components) ---
+        const Icon = ({ path, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {path}
+            </svg>
+        );
+
+        const Icons = {
+            BookOpen: (props) => <Icon {...props} path={<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>} />,
+            Sparkles: (props) => <Icon {...props} path={<><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 5h4"/><path d="M3 9h4"/></>} />,
+            Clock: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>} />,
+            GraduationCap: (props) => <Icon {...props} path={<><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></>} />,
+            Target: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>} />,
+            Layers: (props) => <Icon {...props} path={<><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></>} />,
+            FileText: (props) => <Icon {...props} path={<><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></>} />,
+            Globe: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>} />,
+            Puzzle: (props) => <Icon {...props} path={<><path d="M19.439 15.424a1 1 0 0 0-1.282-1.571l-.176.143a.2.2 0 0 1-.314-.143l-.008-.225a1 1 0 0 0-1.391-.91l-.226.075a.2.2 0 0 1-.258-.23l.034-.234a1 1 0 0 0-1.789-.894l-.12.24a.2.2 0 0 1-.334.02l-.184-.204a1 1 0 0 0-1.636.336l-.078.232a.2.2 0 0 1-.34.054l-.158-.196a1 1 0 0 0-1.684.58l-.022.25a.2.2 0 0 1-.304.168l-.2-.132a1 1 0 0 0-1.554.832v.25a.2.2 0 0 1-.2.2h-.25a1 1 0 0 0-.832 1.554l.132.2a.2.2 0 0 1-.168.304l-.25.022a1 1 0 0 0-.58 1.684l.196.158a.2.2 0 0 1-.054.34l-.232.078a1 1 0 0 0-.336 1.636l.204.184a.2.2 0 0 1-.02.334l-.24.12a1 1 0 0 0 .894 1.789l.234-.034a.2.2 0 0 1 .23.258l-.075.226a1 1 0 0 0 .91 1.391l.225.008a.2.2 0 0 1 .143.314l-.143.176a1 1 0 0 0 1.571 1.282l.17-.114a.2.2 0 0 1 .288.082l.104.228a1 1 0 0 0 1.81.082l.114-.19a.2.2 0 0 1 .326-.04l.192.146a1 1 0 0 0 1.68-.78l.006-.252a.2.2 0 0 1 .27-.18l.216.094a1 1 0 0 0 1.356-1.168l-.048-.246a.2.2 0 0 1 .184-.236l.248-.032a1 1 0 0 0 .866-1.724l-.18-.18a.2.2 0 0 1 .03-.326l.214-.132a1 1 0 0 0 .39-1.748l-.162-.178a.2.2 0 0 1 .06-.33l.24-.092a1 1 0 0 0 .316-1.79z"/></>} />,
+            ArrowLeft: (props) => <Icon {...props} path={<><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></>} />,
+            Download: (props) => <Icon {...props} path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>} />
+        };
+
+        // --- CONSTANTS ---
+        // SYSTEM_PROMPT is assembled server-side in netlify/functions/generate.mjs (Claude).
+
+        const SKILLS = ["Listening", "Speaking", "Reading", "Writing", "Grammar", "Vocabulary", "Pronunciation"];
+        
+        // --- DATA: THEMES & GRAMMAR PER GRADE ---
+
+        const TOPICS_BY_GRADE = {
+            "9": [
+                "Theme 1: School Life (Countries, Nationalities, Capitals, Tourist Attractions)",
+                "Theme 2: Classroom Life (Classmates, Friendships, Routines, Habits)", 
+                "Theme 3: Personal Life (Physical Appearance & Personality)",
+                "Theme 4: Family Life (Jobs, Work Routines, Workplaces)",
+                "Theme 5: Life in the House & Neighbourhood (Types of Houses, Rooms, Furniture)",
+                "Theme 6: Life in the City & Country (Food Culture, Festivals)",
+                "Theme 7: Life in the World & Nature (Endangered Animals, Habitats)",
+                "Theme 8: Life in the Universe & Future (Films, Sci-Fi, Technology)"
+            ],
+            "10": [
+                "Theme 1: School Life & Education (School Types, Activities, Anxiety, National Days)",
+                "Theme 2: Classroom Life & Learning (Activities, Learning Styles, Technology)",
+                "Theme 3: Personal Life & Well-being (Body, Illnesses, Human Nature, Fashion)",
+                "Theme 4: Family Life & Home (Family Routines, Hobbies, House Types)",
+                "Theme 5: Life in the Neighbourhood & City (Attractions, Services, Transportation)",
+                "Theme 6: Life in the World & Culture (Continents, Food Shopping, Food Culture)",
+                "Theme 7: Life in Nature & Global Problems (Natural Resources, Protection)",
+                "Theme 8: Life in the Universe & The Future (Planets, Space Exploration)"
+            ],
+            "11": [
+                "Theme 1: School Life & Education (Career Planning)",
+                "Theme 2: Classroom Life & Learning (Learning Activities, Styles, Technology)",
+                "Theme 3: Personal Life & Well-being (Physical/Mental Health)",
+                "Theme 4: Family Life & Home (Traditions, Values, Customs, Problems)",
+                "Theme 5: Life in the Neighbourhood, City & Social Life (Attractions, Services, Transportation)",
+                "Theme 6: Life in the World & Culture (Celebrations, Sports)",
+                "Theme 7: Life in Nature & Global Problems (Resources, Issues, Protection)",
+                "Theme 8: Life in the Universe & Future (Lifestyles, Technologies)"
+            ],
+            "12": [
+                "Theme 2: Personal Life & Well-being (Social Health, Economic Stability/Fashion)",
+                "Theme 3: Family Life & Home (Technology Impact, Family & Community)",
+                "Theme 4: City & Social Life (Rural vs Urban, Infrastructure & Solutions)",
+                "Theme 6: Life in the Universe & Future (Space Organisations, Future Aspirations)"
+            ]
+        };
+
+        const GRAMMAR_BY_GRADE = {
+            "9": [
+                "To be (am, is, are) - Present",
+                "Modal 'Can' (Ability, Permission, Possibility)",
+                "Subject Pronouns & Possessive Adjectives",
+                "Present Simple Tense",
+                "Present Continuous Tense",
+                "Prepositions of Place (at, in, on)",
+                "Imperatives",
+                "Too & Enough",
+                "Simple Past Tense (To be: was/were)",
+                "There was / There were",
+                "Modal 'Should' (Advice/Obligation)",
+                "Simple Future Tense (Will)"
+            ],
+            "10": [
+                "Simple Present vs Present Progressive",
+                "Quantifiers (something, nothing, anything)",
+                "Question Tags",
+                "Adverbs of Frequency",
+                "Modals of Deduction (must, can't)",
+                "Future Tenses (Will vs Be Going To)",
+                "Modals of Obligation/Prohibition (must, have to, should, ought to)",
+                "Reflexive Pronouns",
+                "Modals of Possibility/Permission (can, might)",
+                "Possessive Pronouns & 's",
+                "Comparatives & Superlatives",
+                "Adjectives ending in -ed/-ing",
+                "Simple Past vs Past Progressive",
+                "Used to",
+                "Present Perfect Tense (since, for, already, just)",
+                "Be able to (ability)",
+                "Modals of Necessity (need, need't)",
+                "Defining Relative Clauses (who, which, that)",
+                "Connectors (so)",
+                "Zero Conditional & First Conditional"
+            ],
+            "11": [
+                "Simple Future Tense vs Be Going to",
+                "Question Tags",
+                "Modals of Obligation (Should, Ought to, Must, Have to)",
+                "Reflexive Pronouns",
+                "Modals of Possibility/Permission (Can, Might)",
+                "Possessive Pronouns & 's",
+                "Future Tenses Mixed (Will, Be Going To, Present Continuous)",
+                "Modals of Ability (Can, Could)",
+                "Comparative Adjectives",
+                "Adjectives (-ed / -ing)",
+                "Past Perfect Tense",
+                "Passive Voice (Past Perfect, Future Tenses)",
+                "Relative Clauses (Defining & Non-defining)",
+                "Connectors (therefore, thus, so)",
+                "Future Progressive Tense",
+                "Zero Conditional & First Conditional"
+            ],
+            "12": [
+                "Simple Past vs Past Progressive",
+                "Past Perfect Tense",
+                "Past Perfect Progressive Tense",
+                "Reported Speech (Past Tenses)",
+                "Future Perfect Tense",
+                "Conditional 3 (Hypothetical Past)",
+                "Mixed Conditionals",
+                "Wish Clauses"
+            ]
+        };
+
+        const MAARIF_OUTCOMES = {
+            "9": {
+                "Listening": [
+                    "[Theme 1] ENG.9.1.L1. Prepare/get ready for listening about school life/countries/capitals.",
+                    "[Theme 1] ENG.9.1.L2. Bring together information on school life/countries/capitals.",
+                    "[Theme 1] ENG.9.1.L3. Make sense/derive meaning from content on school life.",
+                    "[Theme 2] ENG.9.2.L1. Prepare/get ready for listening about classroom life/friendships.",
+                    "[Theme 2] ENG.9.2.L2. Bring together information on classroom life/routines.",
+                    "[Theme 3] ENG.9.3.L1. Prepare/get ready for listening about physical appearance & personality.",
+                    "[Theme 4] ENG.9.4.L1. Prepare/get ready for listening about family members' jobs/workplaces.",
+                    "[Theme 5] ENG.9.5.L1. Prepare/get ready for listening about types of houses/rooms/furniture.",
+                    "[Theme 6] ENG.9.6.L1. Prepare/get ready for listening about food culture/festivals.",
+                    "[Theme 7] ENG.9.7.L1. Prepare/get ready for listening about endangered animals/habitats.",
+                    "[Theme 8] ENG.9.8.L1. Prepare/get ready for listening about films/future/technology."
+                ],
+                "Speaking": [
+                    "[Theme 1] ENG.9.1.S1. Prepare to speak meaningfully about school life/countries.",
+                    "[Theme 1] ENG.9.1.S2. Analyse/understand model content on school life.",
+                    "[Theme 1] ENG.9.1.S3. Produce meaningful/accurate spoken content on school life.",
+                    "[Theme 2] ENG.9.2.S3. Produce meaningful/accurate spoken content on classroom life/routines.",
+                    "[Theme 3] ENG.9.3.S3. Produce meaningful/accurate spoken content on appearance/personality.",
+                    "[Theme 4] ENG.9.4.S3. Produce meaningful/accurate spoken content on jobs/workplaces.",
+                    "[Theme 5] ENG.9.5.S3. Produce meaningful/accurate spoken content on houses/rooms.",
+                    "[Theme 6] ENG.9.6.S3. Produce meaningful/accurate spoken content on food/festivals.",
+                    "[Theme 7] ENG.9.7.S3. Produce meaningful/accurate spoken content on nature/animals.",
+                    "[Theme 8] ENG.9.8.S3. Produce meaningful/accurate spoken content on films/future."
+                ],
+                "Reading": [
+                    "[Theme 1] ENG.9.1.R1. Prepare for reading about school life/countries.",
+                    "[Theme 1] ENG.9.1.R2. Bring information together through reading about school life.",
+                    "[Theme 2] ENG.9.2.R1. Prepare for reading about classroom life/routines.",
+                    "[Theme 3] ENG.9.3.R1. Prepare for reading about appearance/personality.",
+                    "[Theme 4] ENG.9.4.R1. Prepare for reading about family jobs/workplaces.",
+                    "[Theme 5] ENG.9.5.R1. Prepare for reading about houses/furniture.",
+                    "[Theme 6] ENG.9.6.R1. Prepare for reading about food culture/festivals.",
+                    "[Theme 7] ENG.9.7.R1. Prepare for reading about endangered animals.",
+                    "[Theme 8] ENG.9.8.R1. Prepare for reading about films/future."
+                ],
+                "Writing": [
+                    "[Theme 1] ENG.9.1.W1. Prepare for writing about school life.",
+                    "[Theme 1] ENG.9.1.W3. Construct new written content on school life.",
+                    "[Theme 2] ENG.9.2.W3. Construct new written content on classroom life/routines.",
+                    "[Theme 3] ENG.9.3.W3. Construct new written content on appearance/personality.",
+                    "[Theme 4] ENG.9.4.W3. Construct new written content on jobs/workplaces.",
+                    "[Theme 5] ENG.9.5.W3. Construct new written content on houses/rooms.",
+                    "[Theme 6] ENG.9.6.W3. Construct new written content on food/festivals.",
+                    "[Theme 7] ENG.9.7.W3. Construct new written content on nature/animals.",
+                    "[Theme 8] ENG.9.8.W3. Construct new written content on films/future."
+                ],
+                "Grammar": [
+                    "[Theme 1] ENG.9.1.G1. Select/use To Be (present) & Can efficiently.",
+                    "[Theme 2] ENG.9.2.G1. Select/use Simple Present Tense efficiently.",
+                    "[Theme 3] ENG.9.3.G1. Select/use To Be & Too/Enough efficiently.",
+                    "[Theme 4] ENG.9.4.G1. Select/use Simple Present & Prepositions of Place.",
+                    "[Theme 5] ENG.9.5.G1. Select/use Simple Present & Present Progressive.",
+                    "[Theme 6] ENG.9.6.G1. Select/use Simple Present, Progressive & Wh- questions.",
+                    "[Theme 7] ENG.9.7.G1. Select/use Simple Past (to be) & Should.",
+                    "[Theme 8] ENG.9.8.G1. Select/use Simple Future (Will) & Simple Present."
+                ],
+                "Vocabulary": [
+                    "[Theme 1] ENG.9.1.V1. Select/use vocab: Countries, Nationalities, Capitals.",
+                    "[Theme 2] ENG.9.2.V1. Select/use vocab: Daily/Study Routines, Habits.",
+                    "[Theme 3] ENG.9.3.V1. Select/use vocab: Physical Appearance, Personality Traits.",
+                    "[Theme 4] ENG.9.4.V1. Select/use vocab: Jobs, Workplaces, Work Routines.",
+                    "[Theme 5] ENG.9.5.V1. Select/use vocab: Types of Houses, Rooms, Furniture.",
+                    "[Theme 6] ENG.9.6.V1. Select/use vocab: Food Culture, Festivals, Dishes.",
+                    "[Theme 7] ENG.9.7.V1. Select/use vocab: Endangered Animals, Habitats.",
+                    "[Theme 8] ENG.9.8.V1. Select/use vocab: Films, Genres, Technology, Future."
+                ],
+                "Pronunciation": [
+                    "[Theme 1] ENG.9.1.P1. Pronunciation: Target sounds/intonation (School Life).",
+                    "[Theme 2] ENG.9.2.P1. Pronunciation: Target sounds/intonation (Classroom Life).",
+                    "[Theme 3] ENG.9.3.P1. Pronunciation: Target sounds/intonation (Personal Life).",
+                    "[Theme 4] ENG.9.4.P1. Pronunciation: Target sounds/intonation (Family Life).",
+                    "[Theme 5] ENG.9.5.P1. Pronunciation: Target sounds/intonation (House Life).",
+                    "[Theme 6] ENG.9.6.P1. Pronunciation: Target sounds/intonation (City Life/Food).",
+                    "[Theme 7] ENG.9.7.P1. Pronunciation: Target sounds/intonation (Nature/Animals).",
+                    "[Theme 8] ENG.9.8.P1. Pronunciation: Target sounds/intonation (Future/Films)."
+                ]
+            },
+            "10": {
+                 "Listening": [
+                    "[Theme 1] ENG.10.1.L1. Prepare/get ready for listening about school life/education.",
+                    "[Theme 2] ENG.10.2.L1. Prepare/get ready for listening about classroom life/learning.",
+                    "[Theme 3] ENG.10.3.L1. Prepare/get ready for listening about personal life/well-being.",
+                    "[Theme 4] ENG.10.4.L1. Prepare/get ready for listening about family life/home.",
+                    "[Theme 5] ENG.10.5.L1. Prepare/get ready for listening about neighbourhood/city/social life.",
+                    "[Theme 6] ENG.10.6.L1. Prepare/get ready for listening about world/culture.",
+                    "[Theme 7] ENG.10.7.L1. Prepare/get ready for listening about nature/global problems.",
+                    "[Theme 8] ENG.10.8.L1. Prepare/get ready for listening about universe/future."
+                ],
+                "Speaking": [
+                    "[Theme 1] ENG.10.1.S1. Prepare to speak meaningfully about school life/education.",
+                    "[Theme 1] ENG.10.1.S3. Produce meaningful/accurate spoken content on school life.",
+                    "[Theme 2] ENG.10.2.S3. Produce meaningful/accurate spoken content on learning activities.",
+                    "[Theme 3] ENG.10.3.S3. Produce meaningful/accurate spoken content on personal well-being.",
+                    "[Theme 4] ENG.10.4.S3. Produce meaningful/accurate spoken content on family/home.",
+                    "[Theme 5] ENG.10.5.S3. Produce meaningful/accurate spoken content on neighbourhood/city.",
+                    "[Theme 6] ENG.10.6.S3. Produce meaningful/accurate spoken content on world/culture.",
+                    "[Theme 7] ENG.10.7.S3. Produce meaningful/accurate spoken content on nature/global problems.",
+                    "[Theme 8] ENG.10.8.S3. Produce meaningful/accurate spoken content on universe/future."
+                ],
+                "Reading": [
+                    "[Theme 1] ENG.10.1.R1. Prepare for reading about school life/education.",
+                    "[Theme 1] ENG.10.1.R3. Make sense/derive meaning from content on school life.",
+                    "[Theme 2] ENG.10.2.R1. Prepare for reading about classroom life/learning.",
+                    "[Theme 3] ENG.10.3.R1. Prepare for reading about personal life/well-being.",
+                    "[Theme 4] ENG.10.4.R1. Prepare for reading about family life/home.",
+                    "[Theme 5] ENG.10.5.R1. Prepare for reading about neighbourhood/city.",
+                    "[Theme 6] ENG.10.6.R1. Prepare for reading about world/culture.",
+                    "[Theme 7] ENG.10.7.R1. Prepare for reading about nature/global problems.",
+                    "[Theme 8] ENG.10.8.R1. Prepare for reading about universe/future."
+                ],
+                "Writing": [
+                    "[Theme 1] ENG.10.1.W1. Prepare for writing about school life/education.",
+                    "[Theme 1] ENG.10.1.W3. Construct new written content on school life.",
+                    "[Theme 2] ENG.10.2.W3. Construct new written content on classroom life.",
+                    "[Theme 3] ENG.10.3.W3. Construct new written content on personal life.",
+                    "[Theme 4] ENG.10.4.W3. Construct new written content on family life.",
+                    "[Theme 5] ENG.10.5.W3. Construct new written content on neighbourhood/city.",
+                    "[Theme 6] ENG.10.6.W3. Construct new written content on world/culture.",
+                    "[Theme 7] ENG.10.7.W3. Construct new written content on nature/global problems.",
+                    "[Theme 8] ENG.10.8.W3. Construct new written content on universe/future."
+                ],
+                "Grammar": [
+                    "[Theme 1] ENG.10.1.G1. Select/use Simple Present/Progressive, Quantifiers, Tags.",
+                    "[Theme 2] ENG.10.2.G1. Select/use Future Tenses, Modals (Should/Must), Reflexives.",
+                    "[Theme 3] ENG.10.3.G1. Select/use Future (Mixed), Can/Could, Comparatives.",
+                    "[Theme 4] ENG.10.4.G1. Select/use Simple Past, Used to, Could.",
+                    "[Theme 5] ENG.10.5.G1. Select/use Past Progressive, Simple Past vs Past Prog.",
+                    "[Theme 6] ENG.10.6.G1. Select/use Present Perfect, Be able to, Need/Needn't.",
+                    "[Theme 7] ENG.10.7.G1. Select/use Relative Clauses, Connectors (so).",
+                    "[Theme 8] ENG.10.8.G1. Select/use Zero/First Conditionals."
+                ],
+                "Vocabulary": [
+                    "[Theme 1] ENG.10.1.V1. Select/use vocab: School Types, Facilities, Anxiety.",
+                    "[Theme 2] ENG.10.2.V1. Select/use vocab: Learning Activities, Styles, Tech.",
+                    "[Theme 3] ENG.10.3.V1. Select/use vocab: Body, Illnesses, Fashion, Well-being.",
+                    "[Theme 4] ENG.10.4.V1. Select/use vocab: Family, Routines, House Types.",
+                    "[Theme 5] ENG.10.5.V1. Select/use vocab: Attractions, Services, Transportation.",
+                    "[Theme 6] ENG.10.6.V1. Select/use vocab: Continents, Food Shopping, Culture.",
+                    "[Theme 7] ENG.10.7.V1. Select/use vocab: Natural Resources, Global Problems.",
+                    "[Theme 8] ENG.10.8.V1. Select/use vocab: Planets, Space, Future Life."
+                ],
+                "Pronunciation": [
+                    "[Theme 1] ENG.10.1.P1. Pronunciation: Intonation for statements/tags.",
+                    "[Theme 2] ENG.10.2.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 3] ENG.10.3.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 4] ENG.10.4.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 5] ENG.10.5.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 6] ENG.10.6.P1. Pronunciation: Target sounds (consonants).",
+                    "[Theme 7] ENG.10.7.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 8] ENG.10.8.P1. Pronunciation: Target sounds (consonants)."
+                ]
+            },
+            "11": {
+                "Listening": [
+                    "[Theme 2] ENG.11.2.L1. Prepare/get ready for listening about classroom life/learning.",
+                    "[Theme 2] ENG.11.2.L2. Bring together information on classroom life/learning.",
+                    "[Theme 2] ENG.11.2.L3. Make sense/derive meaning from content on classroom life.",
+                    "[Theme 2] ENG.11.2.L4. Reflect on listening process about classroom life.",
+                    "[Theme 3] ENG.11.3.L1. Prepare/get ready for listening about personal life/well-being.",
+                    "[Theme 4] ENG.11.4.L1. Prepare/get ready for listening about family life/home.",
+                    "[Theme 5] ENG.11.5.L1. Prepare/get ready for listening about neighbourhood/city/social life.",
+                    "[Theme 6] ENG.11.6.L1. Prepare/get ready for listening about world/culture.",
+                    "[Theme 7] ENG.11.7.L1. Prepare/get ready for listening about nature/global problems.",
+                    "[Theme 8] ENG.11.8.L1. Prepare/get ready for listening about universe/future."
+                ],
+                "Speaking": [
+                    "[Theme 2] ENG.11.2.S1. Prepare to speak meaningfully about classroom life.",
+                    "[Theme 2] ENG.11.2.S3. Produce meaningful/accurate spoken content on classroom life.",
+                    "[Theme 3] ENG.11.3.S3. Produce meaningful/accurate spoken content on personal well-being.",
+                    "[Theme 4] ENG.11.4.S3. Produce meaningful/accurate spoken content on family/home.",
+                    "[Theme 6] ENG.11.6.S3. Produce meaningful/accurate spoken content on world/culture.",
+                    "[Theme 7] ENG.11.7.S3. Produce meaningful/accurate spoken content on nature/global problems.",
+                    "[Theme 8] ENG.11.8.S3. Produce meaningful/accurate spoken content on universe/future."
+                ],
+                "Reading": [
+                    "[Theme 2] ENG.11.2.R1. Prepare for reading about classroom life/learning.",
+                    "[Theme 2] ENG.11.2.R3. Make sense/derive meaning from content on classroom life.",
+                    "[Theme 3] ENG.11.3.R1. Prepare for reading about personal life/well-being.",
+                    "[Theme 4] ENG.11.4.R1. Prepare for reading about family life/home.",
+                    "[Theme 6] ENG.11.6.R1. Prepare for reading about world/culture.",
+                    "[Theme 7] ENG.11.7.R1. Prepare for reading about nature/global problems.",
+                    "[Theme 8] ENG.11.8.R1. Prepare for reading about universe/future."
+                ],
+                "Writing": [
+                    "[Theme 2] ENG.11.2.W1. Prepare for writing about classroom life.",
+                    "[Theme 2] ENG.11.2.W3. Construct new written content on classroom life.",
+                    "[Theme 3] ENG.11.3.W3. Construct new written content on personal life.",
+                    "[Theme 4] ENG.11.4.W3. Construct new written content on family life.",
+                    "[Theme 6] ENG.11.6.W3. Construct new written content on world/culture.",
+                    "[Theme 7] ENG.11.7.W3. Construct new written content on nature/global problems.",
+                    "[Theme 8] ENG.11.8.W3. Construct new written content on universe/future."
+                ],
+                "Grammar": [
+                    "[Theme 2] ENG.11.2.G1. Select/use Simple Future, Be Going To, Modals of Obligation.",
+                    "[Theme 3] ENG.11.3.G1. Select/use Future Tenses (Mixed), Modals (Can/Could).",
+                    "[Theme 4] ENG.11.4.G1. Select/use Past Perfect, Question Tags, Used to/Could.",
+                    "[Theme 6] ENG.11.6.G1. Select/use Relative Clauses, Connectors.",
+                    "[Theme 7] ENG.11.7.G1. Select/use Future Progressive, Passive (Future Prog).",
+                    "[Theme 8] ENG.11.8.G1. Select/use Zero/First/Second Conditionals, Wishes."
+                ],
+                "Vocabulary": [
+                    "[Theme 2] ENG.11.2.V1. Select/use vocab: Learning Activities, Styles, Tech.",
+                    "[Theme 3] ENG.11.3.V1. Select/use vocab: Physical Health, Mental Health, Body.",
+                    "[Theme 4] ENG.11.4.V1. Select/use vocab: Family Routines, Traditions, Problems.",
+                    "[Theme 6] ENG.11.6.V1. Select/use vocab: Cultural Celebrations, Sports.",
+                    "[Theme 7] ENG.11.7.V1. Select/use vocab: Natural Resources, Global Problems.",
+                    "[Theme 8] ENG.11.8.V1. Select/use vocab: Future Lifestyles, Technologies."
+                ],
+                "Pronunciation": [
+                    "[Theme 2] ENG.11.2.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 3] ENG.11.3.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 4] ENG.11.4.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 6] ENG.11.6.P1. Pronunciation: Target sounds (consonants).",
+                    "[Theme 7] ENG.11.7.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 8] ENG.11.8.P1. Pronunciation: Target sounds (consonants)."
+                ]
+            },
+            "12": {
+                "Listening": [
+                    "[Theme 2] ENG.12.2.L1. Prepare/get ready for listening about personal well-being/social health/economic stability.",
+                    "[Theme 2] ENG.12.2.L3. Make sense/derive meaning from content on personal well-being.",
+                    "[Theme 3] ENG.12.3.L1. Prepare/get ready for listening about family life/technology/community.",
+                    "[Theme 4] ENG.12.4.L1. Prepare/get ready for listening about city/social life/infrastructure.",
+                    "[Theme 6] ENG.12.6.L1. Prepare/get ready for listening about universe/future/space."
+                ],
+                "Speaking": [
+                    "[Theme 2] ENG.12.2.S3. Produce meaningful/accurate spoken content on personal well-being.",
+                    "[Theme 3] ENG.12.3.S3. Produce meaningful/accurate spoken content on family/technology.",
+                    "[Theme 4] ENG.12.4.S3. Produce meaningful/accurate spoken content on city/infrastructure.",
+                    "[Theme 6] ENG.12.6.S3. Produce meaningful/accurate spoken content on space/future."
+                ],
+                "Reading": [
+                    "[Theme 2] ENG.12.2.R1. Prepare for reading about personal well-being/social health.",
+                    "[Theme 2] ENG.12.2.R3. Make sense/derive meaning from content on personal well-being.",
+                    "[Theme 3] ENG.12.3.R1. Prepare for reading about family life/technology.",
+                    "[Theme 4] ENG.12.4.R1. Prepare for reading about city/social life.",
+                    "[Theme 6] ENG.12.6.R1. Prepare for reading about universe/future."
+                ],
+                "Writing": [
+                    "[Theme 2] ENG.12.2.W3. Construct new written content on personal well-being.",
+                    "[Theme 3] ENG.12.3.W3. Construct new written content on family life.",
+                    "[Theme 4] ENG.12.4.W3. Construct new written content on city/social life.",
+                    "[Theme 6] ENG.12.6.W3. Construct new written content on universe/future."
+                ],
+                "Grammar": [
+                    "[Theme 2] ENG.12.2.G1. Select/use Simple Past/Prog/Perfect/Perfect Prog.",
+                    "[Theme 3] ENG.12.3.G1. Select/use Reported Speech (Past Tenses).",
+                    "[Theme 4] ENG.12.4.G1. Select/use Future Perfect Tense.",
+                    "[Theme 6] ENG.12.6.G1. Select/use Conditional 3, Mixed Conditionals."
+                ],
+                "Vocabulary": [
+                    "[Theme 2] ENG.12.2.V1. Select/use vocab: Social Health (EQ, Bonds), Economic Stability (Fashion, Spending).",
+                    "[Theme 3] ENG.12.3.V1. Select/use vocab: Technology Impact (Streaming, Privacy), Family-Community Relations.",
+                    "[Theme 4] ENG.12.4.V1. Select/use vocab: Communities (Rural/City), Infrastructure (Planning, Solutions).",
+                    "[Theme 6] ENG.12.6.V1. Select/use vocab: Space Organisations (NASA, TSA), Future Plans/Aspirations."
+                ],
+                "Pronunciation": [
+                    "[Theme 2] ENG.12.2.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 3] ENG.12.3.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 4] ENG.12.4.P1. Pronunciation: Target sounds (vowels/consonants).",
+                    "[Theme 6] ENG.12.6.P1. Pronunciation: Target sounds (vowels/consonants)."
+                ]
+            }
+        };
+
+        const DROPDOWN_OPTIONS = {
+            durations: ["40 minutes (1 lesson hour)", "80 minutes (2 lesson hours)", "120 minutes (3 lesson hours)"],
+            studentProfiles: [
+                "Grade 9 (A1-A2 Transition)",
+                "Grade 10 (A2-B1)",
+                "Grade 11 (B1-B2)",
+                "Grade 12 (B2-B2+)",
+                "Mixed Proficiency Class",
+                "Exam-focused / Academic Group",
+                "Vocational High School Profile",
+                "High Motivation / Communicative"
+            ],
+            activityTypes: [
+                "Communicative Task (Information Gap)",
+                "Role-play & Real-life Simulation",
+                "Project-Based Learning (PBL)",
+                "Digital Storytelling / Media",
+                "Collaborative Problem Solving",
+                "Debate / Discussion",
+                "Reading Circles / Jigsaw Reading",
+                "Gamified Learning (Kahoot/Quizizz)",
+                "Process Writing Workshop"
+            ],
+            assessmentTypes: [
+                "Values-based Observation Checklist",
+                "Performance Task Rubric",
+                "Self-Reflection / Peer-Assessment",
+                "Exit Ticket / Mini Quiz",
+                "Digital Portfolio Entry",
+                "Oral Presentation Rubric"
+            ]
+        };
+
+        // --- AI SERVICE (server-side, Gemini) ---
+        // The browser sends only the form selections to the site's serverless
+        // function, which holds the API key and calls Claude. The plan streams
+        // back as plain text; onUpdate receives the text generated so far.
+        const generateLessonPlan = async (data, onUpdate) => {
+            // On Netlify the function shares the site's origin; elsewhere (e.g. GitHub Pages) call it by full URL.
+            const API_URL = location.hostname.endsWith("netlify.app") ? "/api/generate" : "https://maariflessonplanner.netlify.app/api/generate";
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+            if (!response.ok) {
+                const detail = await response.json().catch(() => ({}));
+                throw new Error(detail.error || `Request failed (${response.status})`);
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let text = "";
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                text += decoder.decode(value, { stream: true });
+                onUpdate(text);
+            }
+            text += decoder.decode();
+            if (text.includes("[ERROR]")) throw new Error(text.slice(text.indexOf("[ERROR]") + 8).trim());
+            return text || "No response generated.";
+        };
+
+        // --- COMPONENTS ---
+
+        // Markdown Renderer
+        const MarkdownRenderer = ({ content }) => {
+            const lines = content.split('\n');
+            const renderedElements = [];
+            
+            const parseBold = (text) => text.split(/(\*\*.*?\*\*)/g).map((part, i) => 
+                (part.startsWith('**') && part.endsWith('**')) 
+                ? <strong key={i} className="font-bold text-slate-900">{part.slice(2, -2)}</strong> 
+                : part
+            );
+
+            let i = 0;
+            while (i < lines.length) {
+                const line = lines[i];
+                const trimmed = line.trim();
+
+                if (trimmed.startsWith('|') && trimmed.includes('|')) {
+                    const tableRows = [];
+                    while (i < lines.length && lines[i].trim().startsWith('|')) {
+                        tableRows.push(lines[i].trim());
+                        i++;
+                    }
+                    const rows = tableRows.map(r => r.replace(/^\||\|$/g, '').split('|').map(c => c.trim()));
+                    const headerRow = rows[0];
+                    const bodyRows = rows.slice(2); // skip separator
+
+                    renderedElements.push(
+                        <div key={`table-${i}`} className="overflow-x-auto my-6 border rounded-xl">
+                            <table className="min-w-full divide-y divide-slate-200">
+                                <thead className="bg-indigo-50">
+                                    <tr>{headerRow.map((h, idx) => <th key={idx} className="px-6 py-4 text-left text-xs font-bold text-indigo-700 uppercase">{parseBold(h)}</th>)}</tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-100">
+                                    {bodyRows.map((r, ri) => <tr key={ri}>{r.map((c, ci) => <td key={ci} className="px-6 py-4 text-sm text-slate-600">{parseBold(c)}</td>)}</tr>)}
+                                </tbody>
+                            </table>
+                        </div>
+                    );
+                    continue;
+                }
+
+                if (line.startsWith('# ')) renderedElements.push(<h1 key={i} className="text-3xl font-bold text-red-700 mt-8 mb-4 border-b pb-2">{parseBold(line.replace('# ', ''))}</h1>);
+                else if (line.startsWith('## ')) renderedElements.push(<h2 key={i} className="text-xl font-bold text-indigo-700 mt-6 mb-3 flex items-center gap-2"><span className="w-1 h-6 bg-indigo-500 rounded-full inline-block"></span>{parseBold(line.replace('## ', ''))}</h2>);
+                else if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) renderedElements.push(<div key={i} className="flex items-start ml-4 mb-2"><span className="mr-2 text-indigo-500">•</span><span className="text-slate-700">{parseBold(trimmed.replace(/^[\*\-]\s/, ''))}</span></div>);
+                else if (trimmed === '') renderedElements.push(<div key={i} className="h-3"></div>);
+                else renderedElements.push(<p key={i} className="mb-2 text-slate-700 leading-relaxed">{parseBold(line)}</p>);
+                
+                i++;
+            }
+            return <div className="space-y-1">{renderedElements}</div>;
+        };
+
+        // Result Display
+        const ResultDisplay = ({ content, onReset, isStreaming }) => {
+            const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
+            const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+            const handleDownloadPDF = async () => {
+                setIsGeneratingPdf(true);
+                const element = document.getElementById('lesson-plan-content');
+                if (window.html2pdf) {
+                    await window.html2pdf().set({ margin: 0.5, filename: 'Maarif_Lesson_Plan.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } }).from(element).save();
+                }
+                setIsGeneratingPdf(false);
+            };
+
+            const handleDownloadDocx = async () => {
+                setIsGeneratingDoc(true);
+                
+                // Defensive check for docx library
+                if (!window.docx) {
+                     alert("Document library failed to load. Please check your internet connection.");
+                     setIsGeneratingDoc(false);
+                     return;
+                }
+
+                try {
+                    const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle } = window.docx;
+                    const lines = content.split('\n');
+                    const children = [new Paragraph({ text: "Maarif Model Lesson Plan", heading: HeadingLevel.TITLE })];
+                    
+                    let i = 0;
+                    while (i < lines.length) {
+                        const line = lines[i].trim();
+                        if (line.startsWith('|') && line.includes('|')) {
+                             const rows = [];
+                             while(i < lines.length && lines[i].trim().startsWith('|')) { rows.push(lines[i].trim()); i++; }
+                             const parsed = rows.map(r => r.replace(/^\||\|$/g, '').split('|').map(c => c.trim())).filter(r => !r[0].includes('---'));
+                             
+                             if (parsed.length) {
+                                children.push(new Table({
+                                    rows: parsed.map(r => new TableRow({ children: r.map(c => new TableCell({ children: [new Paragraph(c)], width: { size: 100/r.length, type: WidthType.PERCENTAGE }, borders: { top: {style: BorderStyle.SINGLE, size: 1}, bottom: {style: BorderStyle.SINGLE, size: 1}, left: {style: BorderStyle.SINGLE, size: 1}, right: {style: BorderStyle.SINGLE, size: 1} } })) })),
+                                    width: { size: 100, type: WidthType.PERCENTAGE }
+                                }));
+                             }
+                             continue;
+                        }
+                        if (line.startsWith('# ')) children.push(new Paragraph({ text: line.replace('# ', ''), heading: HeadingLevel.HEADING_1 }));
+                        else if (line.startsWith('## ')) children.push(new Paragraph({ text: line.replace('## ', ''), heading: HeadingLevel.HEADING_2 }));
+                        else if (line.startsWith('* ')) children.push(new Paragraph({ text: line.replace('* ', ''), bullet: { level: 0 } }));
+                        else if (line) children.push(new Paragraph({ text: line }));
+                        i++;
+                    }
+
+                    const blob = await Packer.toBlob(new Document({ sections: [{ children }] }));
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.download = "Maarif_Lesson_Plan.docx";
+                    link.click();
+                } catch (e) { console.error(e); alert("Docx generation error"); }
+                setIsGeneratingDoc(false);
+            };
+
+            return (
+                <div className="animate-fade-in-up">
+                    <div className="flex flex-col sm:flex-row justify-between items-center mb-6 no-print gap-4">
+                        <button onClick={onReset} disabled={isStreaming} className="disabled:opacity-50 flex items-center gap-2 text-slate-600 hover:text-indigo-600 font-medium bg-white px-4 py-2 rounded-lg border border-slate-200"><Icons.ArrowLeft className="w-4 h-4" /> Create New Plan</button>
+                        <div className="flex gap-3">
+                            {isStreaming && <span className="flex items-center gap-2 text-sm text-indigo-600 font-medium"><Icons.Sparkles className="w-4 h-4 animate-pulse" /> Writing your lesson plan...</span>}
+                            {!isStreaming && <>
+                            <button onClick={handleDownloadDocx} disabled={isGeneratingDoc} className="flex items-center gap-2 bg-white text-indigo-700 px-5 py-2 rounded-lg font-semibold border border-indigo-100 hover:bg-indigo-50">{isGeneratingDoc ? "..." : <Icons.FileText className="w-4 h-4" />} DOCX</button>
+                            <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2 rounded-lg font-semibold shadow-md hover:bg-indigo-700">{isGeneratingPdf ? "..." : <Icons.Download className="w-4 h-4" />} PDF</button>
+                            </>}
+                        </div>
+                    </div>
+                    <div id="lesson-plan-content" className="bg-white rounded-xl shadow-xl p-8 border border-slate-200">
+                        <div className="print-only hidden mb-8 border-b-2 border-red-600 pb-4"><h1 className="text-2xl font-bold">Maarif Lesson Plan</h1></div>
+                        <MarkdownRenderer content={content} />
+                    </div>
+                </div>
+            );
+        };
+
+        // Input Form
+        const InputForm = ({ onSubmit, isLoading }) => {
+            const [formData, setFormData] = useState({ 
+                gradeLevel: "9", 
+                outcomes: "", 
+                topic: "", 
+                targetLanguage: GRAMMAR_BY_GRADE["9"][0], // Default based on grade 9
+                duration: DROPDOWN_OPTIONS.durations[0], 
+                studentProfile: DROPDOWN_OPTIONS.studentProfiles[0], 
+                activityTypes: DROPDOWN_OPTIONS.activityTypes[0], 
+                assessmentType: DROPDOWN_OPTIONS.assessmentTypes[0] 
+            });
+            const [selectedSkill, setSelectedSkill] = useState(SKILLS[0]);
+            const [outcomesList, setOutcomesList] = useState([]);
+
+            // Available Grammar Options based on Grade
+            const availableGrammar = useMemo(() => {
+                return GRAMMAR_BY_GRADE[formData.gradeLevel] || [];
+            }, [formData.gradeLevel]);
+
+            useMemo(() => {
+                const list = MAARIF_OUTCOMES[formData.gradeLevel]?.[selectedSkill] || [];
+                setOutcomesList(list);
+                
+                // When grade changes, update outcomes, topic, AND target language
+                setFormData(prev => ({ 
+                    ...prev, 
+                    outcomes: list[0] || "", 
+                    topic: TOPICS_BY_GRADE[prev.gradeLevel][0],
+                    // Only reset grammar if it hasn't been manually set to something valid, or just always reset on grade change
+                    targetLanguage: GRAMMAR_BY_GRADE[prev.gradeLevel][0]
+                }));
+            }, [formData.gradeLevel, selectedSkill]);
+
+            const handleSubmit = (e) => { e.preventDefault(); onSubmit(formData); };
+
+            return (
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+                    <div className="bg-gradient-to-r from-red-700 to-red-600 p-6 text-white">
+                        <h2 className="text-2xl font-bold flex items-center gap-2"><Icons.BookOpen className="w-6 h-6" /> Lesson Details</h2>
+                        <p className="text-red-100 mt-2 text-sm opacity-90">Based on Türkiye Yüzyılı Maarif Modeli (Erdem-Değer-Eylem).</p>
+                    </div>
+                    <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div><label className="block text-sm font-semibold text-slate-700 mb-2 flex gap-2"><Icons.GraduationCap className="w-4 h-4 text-indigo-500"/>Grade</label><select className="w-full px-4 py-3 rounded-lg border bg-slate-50" value={formData.gradeLevel} onChange={e => setFormData({...formData, gradeLevel: e.target.value})}>{["9","10","11","12"].map(g => <option key={g} value={g}>{g}th Grade</option>)}</select></div>
+                            <div><label className="block text-sm font-semibold text-slate-700 mb-2 flex gap-2"><Icons.Clock className="w-4 h-4 text-indigo-500"/>Time</label><select className="w-full px-4 py-3 rounded-lg border bg-slate-50" value={formData.duration} onChange={e => setFormData({...formData, duration: e.target.value})}>{DROPDOWN_OPTIONS.durations.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+                        </div>
+                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                            <div className="grid md:grid-cols-3 gap-6">
+                                <div><label className="block text-sm font-semibold text-slate-700 mb-2 flex gap-2"><Icons.Puzzle className="w-4 h-4 text-indigo-500"/>Skill</label><select className="w-full px-4 py-3 rounded-lg border bg-white" value={selectedSkill} onChange={e => setSelectedSkill(e.target.value)}>{SKILLS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                                <div className="md:col-span-2"><label className="block text-sm font-semibold text-slate-700 mb-2 flex gap-2"><Icons.Target className="w-4 h-4 text-indigo-500"/>Outcome (Sample)</label><select className="w-full px-4 py-3 rounded-lg border bg-white truncate" value={formData.outcomes} onChange={e => setFormData({...formData, outcomes: e.target.value})}>{outcomesList.map((o, i) => <option key={i} value={o}>{o}</option>)}</select></div>
+                            </div>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div><label className="block text-sm font-semibold text-slate-700 mb-2 flex gap-2"><Icons.Globe className="w-4 h-4 text-indigo-500"/>Maarif Theme</label><select className="w-full px-4 py-3 rounded-lg border bg-slate-50" value={formData.topic} onChange={e => setFormData({...formData, topic: e.target.value})}>{(TOPICS_BY_GRADE[formData.gradeLevel]||[]).map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                            <div><label className="block text-sm font-semibold text-slate-700 mb-2 flex gap-2"><Icons.BookOpen className="w-4 h-4 text-indigo-500"/>Grammar Focus</label><select className="w-full px-4 py-3 rounded-lg border bg-slate-50" value={formData.targetLanguage} onChange={e => setFormData({...formData, targetLanguage: e.target.value})}>{availableGrammar.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                        </div>
+                         <div className="grid md:grid-cols-2 gap-6">
+                            <div><label className="block text-sm font-semibold text-slate-700 mb-2">Student Profile</label><select className="w-full px-4 py-3 rounded-lg border bg-slate-50" value={formData.studentProfile} onChange={e => setFormData({...formData, studentProfile: e.target.value})}>{DROPDOWN_OPTIONS.studentProfiles.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+                            <div><label className="block text-sm font-semibold text-slate-700 mb-2 flex gap-2"><Icons.Layers className="w-4 h-4 text-indigo-500"/>Activity Type</label><select className="w-full px-4 py-3 rounded-lg border bg-slate-50" value={formData.activityTypes} onChange={e => setFormData({...formData, activityTypes: e.target.value})}>{DROPDOWN_OPTIONS.activityTypes.map(a => <option key={a} value={a}>{a}</option>)}</select></div>
+                        </div>
+                         <div><label className="block text-sm font-semibold text-slate-700 mb-2 flex gap-2"><Icons.FileText className="w-4 h-4 text-indigo-500"/>Assessment</label><select className="w-full px-4 py-3 rounded-lg border bg-slate-50" value={formData.assessmentType} onChange={e => setFormData({...formData, assessmentType: e.target.value})}>{DROPDOWN_OPTIONS.assessmentTypes.map(a => <option key={a} value={a}>{a}</option>)}</select></div>
+                        <button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg disabled:opacity-50 flex justify-center items-center gap-3">{isLoading ? "Generating..." : <><Icons.Sparkles className="w-5 h-5" /> Generate Lesson Plan</>}</button>
+                    </form>
+                </div>
+            );
+        };
+
+        // Main App
+        const App = () => {
+            const [lessonPlan, setLessonPlan] = useState(null);
+            const [isLoading, setIsLoading] = useState(false);
+
+            const handleGenerate = async (data) => {
+                setIsLoading(true);
+                setLessonPlan("");
+                try {
+                    const plan = await generateLessonPlan(data, setLessonPlan);
+                    setLessonPlan(plan);
+                } catch (error) {
+                    console.error(error);
+                    setLessonPlan(null);
+                    alert(`Error: ${error.message}`);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen pb-12">
+                    <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm mb-8">
+                        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-2"><div className="bg-red-600 p-1.5 rounded-lg"><Icons.BookOpen className="w-5 h-5 text-white" /></div><h1 className="text-lg font-bold text-slate-800">Maarif Lesson Planner</h1></div>
+                            <div className="flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full border"><Icons.Sparkles className="w-3 h-3 text-indigo-500" /><span>AI Powered · Gemini</span></div>
+                        </div>
+                    </header>
+                    <main className="max-w-4xl mx-auto px-4">
+                        {lessonPlan === null ? <div className="animate-fade-in"><div className="text-center mb-8"><h2 className="text-3xl font-extrabold text-slate-900 mb-3">Create Your Lesson Plan</h2><p className="text-lg text-slate-600 max-w-2xl mx-auto">Aligned with <span className="text-red-600 font-semibold">Türkiye Yüzyılı Maarif Modeli</span></p></div><InputForm onSubmit={handleGenerate} isLoading={isLoading} /></div> : <ResultDisplay content={lessonPlan} isStreaming={isLoading} onReset={() => setLessonPlan(null)} />}
+                    </main>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
